@@ -10,6 +10,7 @@ public interface GamePiece {
     //returns name of the piece
     String getName();
     //check for the game piece is promoted or not
-    boolean canPromote();
+
+    PromotionStatus checkPromotion(Position targetPosition);
 
 }
