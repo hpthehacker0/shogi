@@ -3,6 +3,7 @@ package com.hariprasanna.shogi.engine;
 import java.util.List;
 
 import static com.hariprasanna.shogi.engine.PlayerColor.BLACK;
+import static com.hariprasanna.shogi.engine.PlayerColor.WHITE;
 import static com.hariprasanna.shogi.engine.PromotionStatus.NONE;
 import static com.hariprasanna.shogi.engine.PromotionStatus.OPTIONAL;
 
@@ -45,10 +46,18 @@ public  abstract class AbstractPiece implements GamePiece {
     @Override
     public PromotionStatus checkPromotion(Position targetPosition) {
 
-        int [] enemyCamp = (player ==BLACK)?new int[]{0,1,2}:new int[]{6,7,8};
-
-        if(targetPosition.row() == enemyCamp[0] ||targetPosition.row() == enemyCamp[1] ||targetPosition.row() == enemyCamp[2]){
+//        int [] enemyCamp = (player ==BLACK)?new int[]{0,1,2}:new int[]{6,7,8};
+//
+//        if(targetPosition.row() == enemyCamp[0] ||targetPosition.row() == enemyCamp[1] ||targetPosition.row() == enemyCamp[2]){
+//            return OPTIONAL;
+//        }
+        if(player == BLACK && targetPosition.row() <=2){
             return OPTIONAL;
+
+        }
+        if(player == WHITE && targetPosition.row() >=6){
+            return OPTIONAL;
+
         }
 
 

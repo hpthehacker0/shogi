@@ -14,18 +14,18 @@ public class Pawn extends AbstractPiece{
 
     @Override
     public List<Position> getLegalMoves(Position currentPosition, ShogiBoard board) {
-        List<Position> legalmoves = new ArrayList<>();
+        List<Position> legalMoves = new ArrayList<>();
 
         int direction = (player == BLACK)?-1:1;
             int targetrow = currentPosition.row() + direction;
             int targetcolumn = currentPosition.column();
             Position target = new Position(targetrow, targetcolumn);
             if (isValidDestination(target, board)) {
-                legalmoves.add(target);
+                legalMoves.add(target);
 
 
             }
-        return legalmoves;
+        return legalMoves;
     }
 
     @Override
