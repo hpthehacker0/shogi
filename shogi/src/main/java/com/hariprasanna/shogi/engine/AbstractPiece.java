@@ -1,5 +1,6 @@
 package com.hariprasanna.shogi.engine;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.hariprasanna.shogi.engine.PlayerColor.BLACK;
@@ -62,5 +63,35 @@ public  abstract class AbstractPiece implements GamePiece {
 
 
         return NONE;
+    }
+    protected List<Position> getSlidingMovesInDirection(Position start, int rowOffset, int colOffset, ShogiBoard board) {
+        List<Position> slidingMoves = new ArrayList<>();
+
+        int currentRow = start.row();
+        int currentColumn = start.column();
+
+        while (true) {
+            currentRow += rowOffset;
+            currentColumn += colOffset;
+            Position target = new Position(currentRow, currentColumn);
+
+            if (!target.isWithinBounds()) {
+                break;
+            }
+
+            GamePiece pieceAtTarget = board.getPiece(target);
+
+            if (pieceAtTarget == null) {
+                slidingMoves.add(target);
+            } else {
+
+                if (pieceAtTarget.getPlayer() != this.player) {
+                    slidingMoves.add(target); // Capture!
+                }
+                break;
+            }
+        }
+
+        return slidingMoves;
     }
 }
