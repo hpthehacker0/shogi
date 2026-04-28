@@ -15,4 +15,7 @@ public interface GamePiece {
 
     void promote();
 
+    GamePiece cloneForCaptor(PlayerColor newOwner);
+
+    boolean isPromoted();
 }

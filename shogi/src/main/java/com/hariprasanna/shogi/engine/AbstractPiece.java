@@ -159,5 +159,7 @@ public  abstract class AbstractPiece implements GamePiece {
         }
         return legalMoves;
     }
+    @Override
+    public abstract GamePiece cloneForCaptor(PlayerColor newOwner);
 
 }

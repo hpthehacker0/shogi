@@ -20,4 +20,8 @@ public class GoldGeneral extends AbstractPiece{
     public PromotionStatus checkPromotion(Position targetPosition) {
         return PromotionStatus.NONE;
     }
+    @Override
+    public GamePiece cloneForCaptor(PlayerColor newOwner) {
+        return new Pawn(newOwner, "Pawn");
+    }
 }

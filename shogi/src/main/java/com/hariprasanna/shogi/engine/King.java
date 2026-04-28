@@ -18,4 +18,8 @@ public class King extends AbstractPiece {
     public PromotionStatus checkPromotion(Position targetPosition) {
         return PromotionStatus.NONE; // Kings never promote!
     }
+    @Override
+    public GamePiece cloneForCaptor(PlayerColor newOwner) {
+        return new Pawn(newOwner, "Pawn");
+    }
 }

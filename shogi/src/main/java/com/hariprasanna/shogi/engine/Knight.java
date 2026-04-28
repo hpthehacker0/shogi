@@ -46,5 +46,9 @@ public class Knight extends AbstractPiece{
 
         return super.checkPromotion(targetPosition);
     }
+    @Override
+    public GamePiece cloneForCaptor(PlayerColor newOwner) {
+        return new Pawn(newOwner, "Pawn");
+    }
 }
 

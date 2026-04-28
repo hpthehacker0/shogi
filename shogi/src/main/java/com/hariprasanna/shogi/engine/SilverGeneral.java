@@ -33,6 +33,10 @@ public class SilverGeneral extends AbstractPiece{
 
         return legalMoves;
     }
+    @Override
+    public GamePiece cloneForCaptor(PlayerColor newOwner) {
+        return new Pawn(newOwner, "Pawn");
+    }
 
 
 }
