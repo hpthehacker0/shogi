@@ -14,6 +14,9 @@ public class SilverGeneral extends AbstractPiece{
 
     @Override
     public List<Position> getLegalMoves(Position currentPosition, ShogiBoard board) {
+        if(this.isPromoted){
+            return getGoldLegalMoves(currentPosition,board);
+        }
         List<Position> legalMoves = new ArrayList<>();
 
         int[][] activeDirection = (player == PlayerColor.BLACK)?BLACK_DIRECTIONS:WHITE_DIRECTIONS;

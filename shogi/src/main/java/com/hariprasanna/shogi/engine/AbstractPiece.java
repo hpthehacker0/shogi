@@ -94,4 +94,70 @@ public  abstract class AbstractPiece implements GamePiece {
 
         return slidingMoves;
     }
+
+    @Override
+    public void promote() {
+        this.isPromoted = true;
+    }
+
+    private static final  int[][] GOLD_BLACK_DIRECTIONS = {
+            {-1,0},{1,0},{0,-1},{0,1},{-1,-1},{-1,1}
+    };
+    private static final  int[][] GOLD_WHITE_DIRECTIONS = {
+            {-1,0},{1,0},{0,-1},{0,1},{1,-1},{1,1}
+    };
+
+
+    public List<Position> getGoldLegalMoves(Position currentPosition, ShogiBoard board) {
+        List<Position> legalMoves = new ArrayList<>();
+
+        int[][] activeDirection = (player == PlayerColor.BLACK)?GOLD_BLACK_DIRECTIONS:GOLD_WHITE_DIRECTIONS;
+
+        for(int[] directions: activeDirection){
+            int targetrow = currentPosition.row() + directions[0];
+            int targetcolumn = currentPosition.column() + directions[1];
+            Position target = new Position(targetrow,targetcolumn);
+            if(isValidDestination(target,board)){
+                legalMoves.add(target);
+            }
+        }
+
+
+        return legalMoves;
+    }
+
+    // 1. Define the 8 possible offsets (rowOffset, colOffset)
+    private static final int[][] KING_DIRECTIONS = {
+            {-1, 0},  // Up
+            {1, 0},   // Down
+            {0, -1},  // Left
+            {0, 1},   // Right
+            {-1, -1}, // Up-Left
+            {-1, 1},  // Up-Right
+            {1, -1},  // Down-Left
+            {1, 1}    // Down-Right
+    };
+
+
+
+
+    public List<Position> getKingLegalMoves(Position current, ShogiBoard board) {
+        List<Position> legalMoves = new ArrayList<>();
+
+        // 2. Loop through every offset in our array
+        for (int[] direction : KING_DIRECTIONS) {
+
+            // Calculate the potential target
+            int targetRow = current.row() + direction[0];
+            int targetCol = current.column() + direction[1];
+            Position target = new Position(targetRow, targetCol);
+
+            // 3. Let our AbstractPiece do the heavy lifting!
+            if (isValidDestination(target, board)) {
+                legalMoves.add(target);
+            }
+        }
+        return legalMoves;
+    }
+
 }

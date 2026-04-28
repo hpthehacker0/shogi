@@ -1,6 +1,7 @@
 package com.hariprasanna.shogi.engine;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 public class Rook extends AbstractPiece{
@@ -13,12 +14,15 @@ public class Rook extends AbstractPiece{
 
     @Override
     public List<Position> getLegalMoves(Position currentPosition, ShogiBoard board) {
-        List<Position> legalMoves = new ArrayList<>();
+        HashSet<Position> legalMoves = new HashSet<>();
 
         for(int [] direction : DIRECTIONS){
 
             legalMoves.addAll(getSlidingMovesInDirection(currentPosition, direction[0], direction[1], board));
         }
-        return legalMoves;
+        if (this.isPromoted) {
+            legalMoves.addAll(getKingLegalMoves(currentPosition, board));
+        }
+        return new ArrayList<>(legalMoves);
     }
 }

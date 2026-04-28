@@ -14,6 +14,9 @@ public class Pawn extends AbstractPiece{
 
     @Override
     public List<Position> getLegalMoves(Position currentPosition, ShogiBoard board) {
+        if(this.isPromoted){
+            return getGoldLegalMoves(currentPosition,board);
+        }
         List<Position> legalMoves = new ArrayList<>();
 
         int direction = (player == BLACK)?-1:1;

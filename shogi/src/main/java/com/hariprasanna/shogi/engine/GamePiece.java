@@ -13,4 +13,6 @@ public interface GamePiece {
 
     PromotionStatus checkPromotion(Position targetPosition);
 
+    void promote();
+
 }
