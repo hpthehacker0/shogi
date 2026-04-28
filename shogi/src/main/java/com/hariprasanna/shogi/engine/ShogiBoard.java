@@ -7,8 +7,16 @@ public class ShogiBoard {
     private final GamePiece[][] grid;
     // The Komadai (Hands)
     private final List<GamePiece> blackHand;
+
     private final List<GamePiece> whiteHand;
 
+    public List<GamePiece> getBlackHand() {
+        return blackHand;
+    }
+
+    public List<GamePiece> getWhiteHand() {
+        return whiteHand;
+    }
     public ShogiBoard(){
         this.grid = new GamePiece[9][9];
         this.blackHand = new ArrayList<>();
