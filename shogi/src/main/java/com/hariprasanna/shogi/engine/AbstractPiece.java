@@ -162,4 +162,8 @@ public  abstract class AbstractPiece implements GamePiece {
     @Override
     public abstract GamePiece cloneForCaptor(PlayerColor newOwner);
 
+    @Override
+    public boolean isPromoted() {
+        return this.isPromoted;
+    }
 }
