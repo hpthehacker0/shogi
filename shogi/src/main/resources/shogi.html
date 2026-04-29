@@ -36,7 +36,8 @@
     const API_URL = "http://localhost:8080/api/games";
     let currentGameId = null;
     let currentTurn = null;
-    let selectedSquare = null; // Will hold {row, col}
+    let selectedSquare = null;
+    let currentBoardPieces = []; // Remembers the pieces to make smart UI decisions!
 
     // 1. Initialize the empty HTML grid
     function buildEmptyGrid() {
@@ -72,7 +73,7 @@
         // First Click: Select a piece
         if (!selectedSquare) {
             selectedSquare = { row, col };
-            document.getElementById(`cell-${row}-${col}`).classList.add("selected");
+            document.getElementById(`cell-${selectedSquare.row}-${selectedSquare.col}`).classList.add("selected");
             return;
         }
 
@@ -84,12 +85,45 @@
         }
 
         // Second Click on different square: Attempt Move!
+
+        // 🌟 SMART PROMOTION LOGIC 🌟
+        // Find out exactly WHICH piece the user is moving
+        const movingPiece = currentBoardPieces.find(p =>
+            p.row === selectedSquare.row && p.col === selectedSquare.col
+        );
+
+        let wantsToPromote = false;
+
+        // Only ask for promotion if the piece isn't ALREADY promoted
+        if (movingPiece && !movingPiece.isPromoted) {
+
+            const isEnteringBlackZone = (currentTurn === "BLACK" && row <= 2);
+            const isEnteringWhiteZone = (currentTurn === "WHITE" && row >= 6);
+
+            let isMandatory = false;
+            if (currentTurn === "BLACK" && row === 0 && movingPiece.name === "Pawn") isMandatory = true;
+            if (currentTurn === "WHITE" && row === 8 && movingPiece.name === "Pawn") isMandatory = true;
+
+            if (isMandatory) {
+                // Force promotion without annoying the user with a popup
+                wantsToPromote = true;
+            }
+            else if (isEnteringBlackZone || isEnteringWhiteZone) {
+                // It's optional! Only ask if the piece CAN be promoted
+                if (movingPiece.name !== "Gold General" && movingPiece.name !== "King") {
+                    wantsToPromote = window.confirm("Do you want to promote this piece?");
+                }
+            }
+        }
+
+        // Build the JSON payload to send to Java
         const moveRequest = {
             requestingPlayer: currentTurn,
             startRow: selectedSquare.row,
             startColumn: selectedSquare.col,
             endRow: row,
-            endColumn: col
+            endColumn: col,
+            promote: wantsToPromote
         };
 
         try {
@@ -104,15 +138,18 @@
                 updateUI(updatedGame); // Success! Redraw the board!
             } else {
                 const errorMessage = await response.text();
-                alert("ILLEGAL MOVE: " + errorMessage); // Your backend throws this!
+                alert("ILLEGAL MOVE: " + errorMessage); // Engine rejected the move
             }
         } catch (error) {
             console.error(error);
         }
 
         // Clear selection after attempt
-        document.getElementById(`cell-${selectedSquare.row}-${selectedSquare.col}`).classList.remove("selected");
-        selectedSquare = null;
+        if (selectedSquare) {
+            const selectedElement = document.getElementById(`cell-${selectedSquare.row}-${selectedSquare.col}`);
+            if (selectedElement) selectedElement.classList.remove("selected");
+            selectedSquare = null;
+        }
     }
 
     // 4. Draw the pieces based on your JSON DTOs
@@ -127,9 +164,9 @@
         let whiteHandText = [];
 
         // Parse your giant JSON string back into a JavaScript Array of PieceDTOs!
-        const pieces = JSON.parse(game.boardStateJson);
+        currentBoardPieces = JSON.parse(game.boardStateJson);
 
-        pieces.forEach(piece => {
+        currentBoardPieces.forEach(piece => {
             let displayName = piece.name.substring(0, 2).toUpperCase(); // e.g., "PA", "RO"
             if (piece.isPromoted) displayName = "+" + displayName;
 

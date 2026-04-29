@@ -238,10 +238,10 @@ public class ShogiBoard {
             boolean isSafe = !isInCheck(myColor);
 
             // --- THE TRUTH SERUM ---
-            if (!isSafe && pieceToMove.getName().equals("King") && capturedPiece != null) {
-                System.out.println("🚨 Time Machine blocked King from capturing at " + target.row() + "," + target.column());
-                System.out.println("Because the King would step into an enemy attack!");
-            }
+//            if (!isSafe && pieceToMove.getName().equals("King") && capturedPiece != null) {
+//                System.out.println("🚨 Time Machine blocked King from capturing at " + target.row() + "," + target.column());
+//                System.out.println("Because the King would step into an enemy attack!");
+//            }
             // ------------------------
 
             // Step D: Rewind time! (Put everything back exactly how it was)
@@ -255,5 +255,47 @@ public class ShogiBoard {
         }
 
         return safeMoves;
+    }
+    // Add this inside ShogiBoard.java
+    public boolean hasAnySafeMoves(PlayerColor player) {
+
+        // 1. Can any piece currently on the board save us?
+        for (int row = 0; row < 9; row++) {
+            for (int col = 0; col < 9; col++) {
+                Position pos = new Position(row, col);
+                GamePiece piece = getPiece(pos);
+
+                if (piece != null && piece.getPlayer() == player) {
+                    if (!getSafeLegalMoves(pos).isEmpty()) {
+                        return true; // We found at least one safe move! The King lives!
+                    }
+                }
+            }
+        }
+
+        // 2. Can dropping a captured piece block the attack?
+        List<GamePiece> hand = (player == PlayerColor.BLACK) ? blackHand : whiteHand;
+        for (GamePiece handPiece : hand) {
+            for (int row = 0; row < 9; row++) {
+                for (int col = 0; col < 9; col++) {
+                    Position dropPos = new Position(row, col);
+
+                    if (getPiece(dropPos) == null) {
+                        // Simulate the drop
+                        setPiece(dropPos, handPiece);
+                        boolean isSafe = !isInCheck(player);
+                        // Rewind the drop
+                        setPiece(dropPos, null);
+
+                        if (isSafe) {
+                            return true; // A drop can save us!
+                        }
+                    }
+                }
+            }
+        }
+
+        // If we checked the entire board AND all our drops and still found nothing...
+        return false;
     }
 }

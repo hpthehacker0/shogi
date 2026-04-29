@@ -7,5 +7,6 @@ public record MoveRequestDTO(
          int startRow,
          int startColumn,
          int endRow,
-         int endColumn
+         int endColumn,
+         boolean promote
 ) {}

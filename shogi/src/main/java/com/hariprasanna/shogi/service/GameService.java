@@ -170,6 +170,8 @@ public class GameService {
         if (pieceToMove == null || pieceToMove.getPlayer() != moveRequest.requestingPlayer()) {
             throw new IllegalArgumentException("Invalid piece selection.");
         }
+        // Ask the engine what the rules are BEFORE we move it!
+        PromotionStatus promoStatus = pieceToMove.checkPromotion(end);
 
         // 7. Execute the move (Assuming you have a method that checks legal moves first!)
         // For now, we will just force the move.
@@ -179,7 +181,24 @@ public class GameService {
         }
 
         board.movePiece(start, end);
-        // --- NEW: CHECK DETECTION ---
+        // 7.1.Handle the Promotion based on the Engine's strict rules
+        GamePiece movedPiece = board.getPiece(end);
+
+        if (promoStatus == PromotionStatus.MANDATORY) {
+            movedPiece.promote(); // Force the promotion (e.g., Pawn on the last row)
+        }
+        else if (promoStatus == PromotionStatus.OPTIONAL) {
+            if (moveRequest.promote()) {
+                movedPiece.promote(); // The engine allows it, AND the user clicked "Yes"
+            }
+        }
+        else if (promoStatus == PromotionStatus.NONE) {
+            if (moveRequest.promote()) {
+                // The user clicked "Yes" using a hacked client, but the engine says NO!
+                throw new IllegalArgumentException("Cheating detected: This piece cannot promote here.");
+            }
+        }
+        // ----------------------------------------
         PlayerColor enemyColor = (moveRequest.requestingPlayer() == PlayerColor.BLACK) ? PlayerColor.WHITE : PlayerColor.BLACK;
 
         if (board.isInCheck(enemyColor)) {
@@ -193,8 +212,19 @@ public class GameService {
                 ? PlayerColor.WHITE
                 : PlayerColor.BLACK;
         game.setCurrentTurn(nextTurn);
+        // 9. THE CHECKMATE DETECTOR
+        if (board.isInCheck(nextTurn)) {
+            // They are in check. Do they have any way out?
+            if (!board.hasAnySafeMoves(nextTurn)) {
+                System.out.println("🏆 CHECKMATE! Game Over.");
+                game.setStatus("CHECKMATE");
+            } else {
+                System.out.println("🚨 CHECK! " + nextTurn + " is under attack!");
+                // Optional: You could set game.setStatus("CHECK") here if you want!
+            }
+        }
 
-        // 9. Save the new state back to the database
+        // 10. Save the new state back to the database
         game.setBoardStateJson(serializeBoard(board));
         return gameRepository.save(game);
     }
