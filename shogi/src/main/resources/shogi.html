@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shogi Engine Visualizer</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #2c3e50; color: white; margin-top: 20px;}
+        .info-panel { margin-bottom: 20px; text-align: center; }
+        .board { display: grid; grid-template-columns: repeat(9, 50px); grid-template-rows: repeat(9, 50px); gap: 2px; background-color: #34495e; border: 4px solid #1abc9c; padding: 2px;}
+        .cell { background-color: #f39c12; display: flex; justify-content: center; align-items: center; font-size: 14px; font-weight: bold; color: black; cursor: pointer; user-select: none; }
+        .cell:hover { background-color: #f1c40f; }
+        .selected { background-color: #1abc9c !important; color: white; border: 2px solid white;}
+        .black-piece { color: black; }
+        .white-piece { color: #d35400; } /* Using dark orange for white so it's readable */
+        .hand { margin: 15px; padding: 10px; border: 2px dashed #7f8c8d; min-width: 300px; text-align: center;}
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #1abc9c; color: white; border: none; border-radius: 5px; margin-bottom: 20px;}
+        button:hover { background-color: #16a085; }
+    </style>
+</head>
+<body>
+
+<button onclick="startGame()">Start New Game</button>
+
+<div class="info-panel">
+    <h2 id="game-status">Game: NOT STARTED</h2>
+    <h3 id="turn-indicator">Turn: -</h3>
+</div>
+
+<div class="hand" id="white-hand">White Hand: []</div>
+
+<div class="board" id="board"></div>
+
+<div class="hand" id="black-hand">Black Hand: []</div>
+
+<script>
+    const API_URL = "http://localhost:8080/api/games";
+    let currentGameId = null;
+    let currentTurn = null;
+    let selectedSquare = null; // Will hold {row, col}
+
+    // 1. Initialize the empty HTML grid
+    function buildEmptyGrid() {
+        const boardDiv = document.getElementById("board");
+        boardDiv.innerHTML = "";
+        for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+                const cell = document.createElement("div");
+                cell.className = "cell";
+                cell.id = `cell-${row}-${col}`;
+                cell.onclick = () => handleSquareClick(row, col);
+                boardDiv.appendChild(cell);
+            }
+        }
+    }
+
+    // 2. Start Game API Call
+    async function startGame() {
+        try {
+            const response = await fetch(`${API_URL}/start`, { method: 'POST' });
+            const game = await response.json();
+            currentGameId = game.id;
+            updateUI(game);
+        } catch (error) {
+            alert("Failed to connect to Spring Boot! Is the server running?");
+        }
+    }
+
+    // 3. Handle Clicks (The State Machine)
+    async function handleSquareClick(row, col) {
+        if (!currentGameId) return;
+
+        // First Click: Select a piece
+        if (!selectedSquare) {
+            selectedSquare = { row, col };
+            document.getElementById(`cell-${row}-${col}`).classList.add("selected");
+            return;
+        }
+
+        // Second Click on same square: Deselect
+        if (selectedSquare.row === row && selectedSquare.col === col) {
+            document.getElementById(`cell-${row}-${col}`).classList.remove("selected");
+            selectedSquare = null;
+            return;
+        }
+
+        // Second Click on different square: Attempt Move!
+        const moveRequest = {
+            requestingPlayer: currentTurn,
+            startRow: selectedSquare.row,
+            startColumn: selectedSquare.col,
+            endRow: row,
+            endColumn: col
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/${currentGameId}/move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(moveRequest)
+            });
+
+            if (response.ok) {
+                const updatedGame = await response.json();
+                updateUI(updatedGame); // Success! Redraw the board!
+            } else {
+                const errorMessage = await response.text();
+                alert("ILLEGAL MOVE: " + errorMessage); // Your backend throws this!
+            }
+        } catch (error) {
+            console.error(error);
+        }
+
+        // Clear selection after attempt
+        document.getElementById(`cell-${selectedSquare.row}-${selectedSquare.col}`).classList.remove("selected");
+        selectedSquare = null;
+    }
+
+    // 4. Draw the pieces based on your JSON DTOs
+    function updateUI(game) {
+        currentTurn = game.currentTurn;
+        document.getElementById("game-status").innerText = `Game ID: ${game.id} | Status: ${game.status}`;
+        document.getElementById("turn-indicator").innerText = `Turn: ${game.currentTurn}`;
+
+        // Clear the board and hands visually
+        buildEmptyGrid();
+        let blackHandText = [];
+        let whiteHandText = [];
+
+        // Parse your giant JSON string back into a JavaScript Array of PieceDTOs!
+        const pieces = JSON.parse(game.boardStateJson);
+
+        pieces.forEach(piece => {
+            let displayName = piece.name.substring(0, 2).toUpperCase(); // e.g., "PA", "RO"
+            if (piece.isPromoted) displayName = "+" + displayName;
+
+            if (piece.location === "BOARD") {
+                const cell = document.getElementById(`cell-${piece.row}-${piece.col}`);
+                cell.innerText = displayName;
+                cell.classList.add(piece.player === "BLACK" ? "black-piece" : "white-piece");
+            }
+            else if (piece.location === "BLACK_HAND") {
+                blackHandText.push(piece.name);
+            }
+            else if (piece.location === "WHITE_HAND") {
+                whiteHandText.push(piece.name);
+            }
+        });
+
+        document.getElementById("black-hand").innerText = `Black Hand: [ ${blackHandText.join(", ")} ]`;
+        document.getElementById("white-hand").innerText = `White Hand: [ ${whiteHandText.join(", ")} ]`;
+    }
+
+    // Run once on load
+    buildEmptyGrid();
+</script>
+</body>
+</html>

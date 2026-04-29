@@ -23,6 +23,13 @@ public class ShogiBoard {
         this.whiteHand = new ArrayList<>();
         setupInitialPosition();
     }
+    // Add this new one for Loading Games!
+    public ShogiBoard(boolean empty) {
+        this.grid = new GamePiece[9][9];
+        this.blackHand = new ArrayList<>();
+        this.whiteHand = new ArrayList<>();
+        // Notice: We DO NOT call setupInitialPosition() here!
+    }
 
     public GamePiece getPiece(Position position){
         if(!position.isWithinBounds()){
@@ -171,5 +178,82 @@ public class ShogiBoard {
 
 
         return true;
+    }
+    // Add this inside ShogiBoard.java
+    public Position findKingPosition(PlayerColor color) {
+        for (int row = 0; row < 9; row++) {
+            for (int col = 0; col < 9; col++) {
+                GamePiece piece = getPiece(new Position(row, col));
+                if (piece != null && piece.getPlayer() == color && piece.getName().equals("King")) {
+                    return new Position(row, col);
+                }
+            }
+        }
+        throw new IllegalStateException("Critical Error: King is missing from the board!");
+    }
+    // Add this inside ShogiBoard.java
+    public boolean isInCheck(PlayerColor playerColor) {
+        Position kingPos = findKingPosition(playerColor);
+        PlayerColor enemyColor = (playerColor == PlayerColor.BLACK) ? PlayerColor.WHITE : PlayerColor.BLACK;
+
+        // Scan the entire board for enemy pieces
+        for (int row = 0; row < 9; row++) {
+            for (int col = 0; col < 9; col++) {
+                Position currentPos = new Position(row, col);
+                GamePiece piece = getPiece(currentPos);
+
+                // If it's an enemy piece, check its line of fire!
+                if (piece != null && piece.getPlayer() == enemyColor) {
+                    List<Position> enemyMoves = piece.getLegalMoves(currentPos, this);
+                    if (enemyMoves.contains(kingPos)) {
+                        return true; // The King is under attack!
+                    }
+                }
+            }
+        }
+        return false; // The King is safe
+    }
+    // Add this inside ShogiBoard.java
+    public List<Position> getSafeLegalMoves(Position start) {
+        GamePiece pieceToMove = getPiece(start);
+        if (pieceToMove == null) return new ArrayList<>();
+
+        // 1. Get the raw, geometric moves
+        List<Position> rawMoves = pieceToMove.getLegalMoves(start, this);
+        List<Position> safeMoves = new ArrayList<>();
+
+        PlayerColor myColor = pieceToMove.getPlayer();
+
+        for (Position target : rawMoves) {
+            // --- THE TIME MACHINE ---
+
+            // Step A: Remember what is currently on the target square (in case we capture something)
+            GamePiece capturedPiece = getPiece(target);
+
+            // Step B: Fast-forward time (Temporarily move the piece)
+            setPiece(target, pieceToMove);
+            setPiece(start, null);
+
+            // Step C: Look around... is my own King in danger?
+            boolean isSafe = !isInCheck(myColor);
+
+            // --- THE TRUTH SERUM ---
+            if (!isSafe && pieceToMove.getName().equals("King") && capturedPiece != null) {
+                System.out.println("🚨 Time Machine blocked King from capturing at " + target.row() + "," + target.column());
+                System.out.println("Because the King would step into an enemy attack!");
+            }
+            // ------------------------
+
+            // Step D: Rewind time! (Put everything back exactly how it was)
+            setPiece(start, pieceToMove);
+            setPiece(target, capturedPiece);
+
+            // Step E: If the radar stayed quiet, it's a legal move!
+            if (isSafe) {
+                safeMoves.add(target);
+            }
+        }
+
+        return safeMoves;
     }
 }

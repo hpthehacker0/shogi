@@ -1,0 +1,54 @@
+package com.hariprasanna.shogi.controller;
+
+import com.hariprasanna.shogi.dto.MoveRequestDTO;
+import com.hariprasanna.shogi.engine.PlayerColor;
+import com.hariprasanna.shogi.engine.ShogiBoard;
+import com.hariprasanna.shogi.model.Game;
+import com.hariprasanna.shogi.repository.GameRepository;
+import com.hariprasanna.shogi.service.GameService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/games")
+@CrossOrigin("*") // Uncomment this later when you build a frontend so it doesn't block requests!
+public class GameController {
+
+    private final GameService gameService;
+    private final GameRepository gameRepository; // <-- Must be here!
+
+    // Spring Boot automatically passes the repository in here
+    public GameController(GameService gameService, GameRepository gameRepository) {
+        this.gameService = gameService;
+        this.gameRepository = gameRepository;
+    }
+
+    // Endpoint 1: Start a brand new game
+    @PostMapping("/start")
+    public ResponseEntity<Game> startGame() throws Exception {
+        Game newGame = new Game();
+        newGame.setStatus("IN_PROGRESS");
+        newGame.setCurrentTurn(PlayerColor.BLACK); // Black always goes first
+
+        // Create a fresh board and serialize it
+        ShogiBoard startingBoard = new ShogiBoard();
+        newGame.setBoardStateJson(gameService.serializeBoard(startingBoard));
+
+        // Save to DB and return the 200 OK response to the user
+        // (You will need to add a save method in your GameService for this, or inject the Repo here)
+        Game savedGame = gameRepository.save(newGame);
+        return ResponseEntity.ok(savedGame);
+    }
+
+    // Endpoint 2: Submit a move
+    @PostMapping("/{id}/move")
+    public ResponseEntity<?> makeMove(@PathVariable Long id, @RequestBody MoveRequestDTO moveRequest) {
+        try {
+            Game updatedGame = gameService.processMove(id, moveRequest);
+            return ResponseEntity.ok(updatedGame);
+        } catch (Exception e) {
+            // If any of our State Checks throw an error, return a 400 Bad Request!
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+}
