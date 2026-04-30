@@ -11,8 +11,15 @@
         .cell:hover { background-color: #f1c40f; }
         .selected { background-color: #1abc9c !important; color: white; border: 2px solid white;}
         .black-piece { color: black; }
-        .white-piece { color: #d35400; } /* Using dark orange for white so it's readable */
-        .hand { margin: 15px; padding: 10px; border: 2px dashed #7f8c8d; min-width: 300px; text-align: center;}
+        .white-piece { color: #d35400; }
+
+        /* 🌟 NEW: Styling for the Hand */
+        .hand-container { margin: 15px; padding: 10px; border: 2px dashed #7f8c8d; min-width: 450px; min-height: 40px; display: flex; gap: 5px; align-items: center; justify-content: center; flex-wrap: wrap;}
+        .hand-label { font-weight: bold; margin-right: 15px; }
+        .hand-piece { background-color: #ecf0f1; color: black; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; user-select: none;}
+        .hand-piece:hover { background-color: #bdc3c7; }
+        .hand-selected { background-color: #e74c3c !important; color: white; border: 2px solid white; }
+
         button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #1abc9c; color: white; border: none; border-radius: 5px; margin-bottom: 20px;}
         button:hover { background-color: #16a085; }
     </style>
@@ -26,20 +33,26 @@
     <h3 id="turn-indicator">Turn: -</h3>
 </div>
 
-<div class="hand" id="white-hand">White Hand: []</div>
+<div class="hand-container" id="white-hand">
+    <span class="hand-label">White Hand:</span>
+</div>
 
 <div class="board" id="board"></div>
 
-<div class="hand" id="black-hand">Black Hand: []</div>
+<div class="hand-container" id="black-hand">
+    <span class="hand-label">Black Hand:</span>
+</div>
 
 <script>
     const API_URL = "http://localhost:8080/api/games";
     let currentGameId = null;
     let currentTurn = null;
     let selectedSquare = null;
-    let currentBoardPieces = []; // Remembers the pieces to make smart UI decisions!
 
-    // 1. Initialize the empty HTML grid
+    // 🌟 NEW: State variable to track if we clicked a piece in our hand
+    let selectedHandPiece = null;
+    let currentBoardPieces = [];
+
     function buildEmptyGrid() {
         const boardDiv = document.getElementById("board");
         boardDiv.innerHTML = "";
@@ -54,7 +67,6 @@
         }
     }
 
-    // 2. Start Game API Call
     async function startGame() {
         try {
             const response = await fetch(`${API_URL}/start`, { method: 'POST' });
@@ -66,37 +78,65 @@
         }
     }
 
-    // 3. Handle Clicks (The State Machine)
+    // 🌟 NEW: Function to handle clicking a piece in the hand
+    function handleHandClick(player, pieceName, htmlElementId) {
+        if (player !== currentTurn) return; // Can't touch enemy hand!
+
+        // Clear board selection if we click a hand piece
+        clearSelections();
+
+        selectedHandPiece = pieceName;
+        document.getElementById(htmlElementId).classList.add("hand-selected");
+    }
+
+    function clearSelections() {
+        if (selectedSquare) {
+            document.getElementById(`cell-${selectedSquare.row}-${selectedSquare.col}`).classList.remove("selected");
+            selectedSquare = null;
+        }
+        // Clear hand selections
+        document.querySelectorAll('.hand-piece').forEach(el => el.classList.remove('hand-selected'));
+        selectedHandPiece = null;
+    }
+
     async function handleSquareClick(row, col) {
         if (!currentGameId) return;
 
-        // First Click: Select a piece
+        // --- 🌟 NEW: IS IT A DROP? ---
+        if (selectedHandPiece != null) {
+            // We have a piece in our hand, and we clicked the board to drop it!
+            const moveRequest = {
+                requestingPlayer: currentTurn,
+                startRow: -1,
+                startCol: -1,
+                endRow: row,
+                endCol: col,
+                promote: false,
+                isDrop: true,
+                dropPieceName: selectedHandPiece
+            };
+
+            await sendMoveRequest(moveRequest);
+            clearSelections();
+            return;
+        }
+
+        // --- EXISTING NORMAL MOVE LOGIC ---
         if (!selectedSquare) {
             selectedSquare = { row, col };
             document.getElementById(`cell-${selectedSquare.row}-${selectedSquare.col}`).classList.add("selected");
             return;
         }
 
-        // Second Click on same square: Deselect
         if (selectedSquare.row === row && selectedSquare.col === col) {
-            document.getElementById(`cell-${row}-${col}`).classList.remove("selected");
-            selectedSquare = null;
+            clearSelections();
             return;
         }
 
-        // Second Click on different square: Attempt Move!
-
-        // 🌟 SMART PROMOTION LOGIC 🌟
-        // Find out exactly WHICH piece the user is moving
-        const movingPiece = currentBoardPieces.find(p =>
-            p.row === selectedSquare.row && p.col === selectedSquare.col
-        );
-
+        const movingPiece = currentBoardPieces.find(p => p.row === selectedSquare.row && p.col === selectedSquare.col);
         let wantsToPromote = false;
 
-        // Only ask for promotion if the piece isn't ALREADY promoted
         if (movingPiece && !movingPiece.isPromoted) {
-
             const isEnteringBlackZone = (currentTurn === "BLACK" && row <= 2);
             const isEnteringWhiteZone = (currentTurn === "WHITE" && row >= 6);
 
@@ -104,28 +144,30 @@
             if (currentTurn === "BLACK" && row === 0 && movingPiece.name === "Pawn") isMandatory = true;
             if (currentTurn === "WHITE" && row === 8 && movingPiece.name === "Pawn") isMandatory = true;
 
-            if (isMandatory) {
-                // Force promotion without annoying the user with a popup
-                wantsToPromote = true;
-            }
+            if (isMandatory) wantsToPromote = true;
             else if (isEnteringBlackZone || isEnteringWhiteZone) {
-                // It's optional! Only ask if the piece CAN be promoted
                 if (movingPiece.name !== "Gold General" && movingPiece.name !== "King") {
                     wantsToPromote = window.confirm("Do you want to promote this piece?");
                 }
             }
         }
 
-        // Build the JSON payload to send to Java
         const moveRequest = {
             requestingPlayer: currentTurn,
             startRow: selectedSquare.row,
-            startColumn: selectedSquare.col,
+            startCol: selectedSquare.col,
             endRow: row,
-            endColumn: col,
-            promote: wantsToPromote
+            endCol: col,
+            promote: wantsToPromote,
+            isDrop: false,
+            dropPieceName: ""
         };
 
+        await sendMoveRequest(moveRequest);
+        clearSelections();
+    }
+
+    async function sendMoveRequest(moveRequest) {
         try {
             const response = await fetch(`${API_URL}/${currentGameId}/move`, {
                 method: 'POST',
@@ -135,39 +177,36 @@
 
             if (response.ok) {
                 const updatedGame = await response.json();
-                updateUI(updatedGame); // Success! Redraw the board!
+                updateUI(updatedGame);
             } else {
                 const errorMessage = await response.text();
-                alert("ILLEGAL MOVE: " + errorMessage); // Engine rejected the move
+                alert("ILLEGAL MOVE: " + errorMessage);
             }
         } catch (error) {
             console.error(error);
         }
-
-        // Clear selection after attempt
-        if (selectedSquare) {
-            const selectedElement = document.getElementById(`cell-${selectedSquare.row}-${selectedSquare.col}`);
-            if (selectedElement) selectedElement.classList.remove("selected");
-            selectedSquare = null;
-        }
     }
 
-    // 4. Draw the pieces based on your JSON DTOs
     function updateUI(game) {
         currentTurn = game.currentTurn;
         document.getElementById("game-status").innerText = `Game ID: ${game.id} | Status: ${game.status}`;
         document.getElementById("turn-indicator").innerText = `Turn: ${game.currentTurn}`;
 
-        // Clear the board and hands visually
         buildEmptyGrid();
-        let blackHandText = [];
-        let whiteHandText = [];
 
-        // Parse your giant JSON string back into a JavaScript Array of PieceDTOs!
+        // 🌟 NEW: Rebuild the Hands
+        const blackHandContainer = document.getElementById("black-hand");
+        const whiteHandContainer = document.getElementById("white-hand");
+
+        blackHandContainer.innerHTML = '<span class="hand-label">Black Hand:</span>';
+        whiteHandContainer.innerHTML = '<span class="hand-label">White Hand:</span>';
+
         currentBoardPieces = JSON.parse(game.boardStateJson);
 
+        let handIndex = 0; // Unique ID for each HTML element
+
         currentBoardPieces.forEach(piece => {
-            let displayName = piece.name.substring(0, 2).toUpperCase(); // e.g., "PA", "RO"
+            let displayName = piece.name.substring(0, 2).toUpperCase();
             if (piece.isPromoted) displayName = "+" + displayName;
 
             if (piece.location === "BOARD") {
@@ -176,18 +215,18 @@
                 cell.classList.add(piece.player === "BLACK" ? "black-piece" : "white-piece");
             }
             else if (piece.location === "BLACK_HAND") {
-                blackHandText.push(piece.name);
+                const handHtml = `<div class="hand-piece" id="hand-${handIndex}" onclick="handleHandClick('BLACK', '${piece.name}', 'hand-${handIndex}')">${piece.name}</div>`;
+                blackHandContainer.innerHTML += handHtml;
+                handIndex++;
             }
             else if (piece.location === "WHITE_HAND") {
-                whiteHandText.push(piece.name);
+                const handHtml = `<div class="hand-piece" id="hand-${handIndex}" onclick="handleHandClick('WHITE', '${piece.name}', 'hand-${handIndex}')">${piece.name}</div>`;
+                whiteHandContainer.innerHTML += handHtml;
+                handIndex++;
             }
         });
-
-        document.getElementById("black-hand").innerText = `Black Hand: [ ${blackHandText.join(", ")} ]`;
-        document.getElementById("white-hand").innerText = `White Hand: [ ${whiteHandText.join(", ")} ]`;
     }
 
-    // Run once on load
     buildEmptyGrid();
 </script>
 </body>

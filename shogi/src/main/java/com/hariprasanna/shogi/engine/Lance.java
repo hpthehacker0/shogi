@@ -37,6 +37,6 @@ public class Lance extends AbstractPiece{
     }
     @Override
     public GamePiece cloneForCaptor(PlayerColor newOwner) {
-        return new Pawn(newOwner, "Pawn");
+        return new Lance(newOwner, "Lance");
     }
 }

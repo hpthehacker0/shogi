@@ -161,51 +161,59 @@ public class GameService {
         // 4. Bring the board to life
         ShogiBoard board = deserializeBoard(game.getBoardStateJson());
 
-        // 5. Create our position records
-        Position start = new Position(moveRequest.startRow(), moveRequest.startColumn());
+// 5. Create our target destination
         Position end = new Position(moveRequest.endRow(), moveRequest.endColumn());
 
-        // 6. STATE CHECK: Does the piece belong to the requesting player?
-        GamePiece pieceToMove = board.getPiece(start);
-        if (pieceToMove == null || pieceToMove.getPlayer() != moveRequest.requestingPlayer()) {
-            throw new IllegalArgumentException("Invalid piece selection.");
-        }
-        // Ask the engine what the rules are BEFORE we move it!
-        PromotionStatus promoStatus = pieceToMove.checkPromotion(end);
+// --- 🌟 NEW: THE DROP ROUTER ---
+        if (moveRequest.isDrop()) {
 
-        // 7. Execute the move (Assuming you have a method that checks legal moves first!)
-        // For now, we will just force the move.
-        List<Position> legalMoves = board.getSafeLegalMoves(start);
-        if (!legalMoves.contains(end)) {
-            throw new IllegalArgumentException("Illegal move: That piece cannot move there.");
-        }
+            // 1. Find the right hand
+            List<GamePiece> hand = (moveRequest.requestingPlayer() == PlayerColor.BLACK) ? board.getBlackHand() : board.getWhiteHand();
 
-        board.movePiece(start, end);
-        // 7.1.Handle the Promotion based on the Engine's strict rules
-        GamePiece movedPiece = board.getPiece(end);
+            // 2. Find the piece they want to drop
+            GamePiece pieceToDrop = hand.stream()
+                    .filter(p -> p.getName().equals(moveRequest.dropPieceName()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Cheating Detected: You don't have that piece in your hand."));
 
-        if (promoStatus == PromotionStatus.MANDATORY) {
-            movedPiece.promote(); // Force the promotion (e.g., Pawn on the last row)
-        }
-        else if (promoStatus == PromotionStatus.OPTIONAL) {
-            if (moveRequest.promote()) {
-                movedPiece.promote(); // The engine allows it, AND the user clicked "Yes"
+            // 3. 🌟 USE THE ENGINE'S LOGIC! 🌟
+            // The board.dropPiece() method automatically checks for Nifu, Zero-Move, and occupied squares.
+            boolean successfulDrop = board.dropPiece(moveRequest.requestingPlayer(), pieceToDrop, end);
+
+            if (!successfulDrop) {
+                // If the engine returns false, the drop was illegal!
+                throw new IllegalArgumentException("Illegal Drop: Violated Nifu (Double Pawn), Zero-Move rule, or square is occupied.");
+            }
+
+        } else {
+
+            Position start = new Position(moveRequest.startRow(), moveRequest.startColumn());
+            GamePiece pieceToMove = board.getPiece(start);
+
+            if (pieceToMove == null || pieceToMove.getPlayer() != moveRequest.requestingPlayer()) {
+                throw new IllegalArgumentException("Invalid piece selection.");
+            }
+
+            PromotionStatus promoStatus = pieceToMove.checkPromotion(end);
+
+            List<Position> legalMoves = board.getSafeLegalMoves(start);
+            if (!legalMoves.contains(end)) {
+                throw new IllegalArgumentException("Illegal move: That piece cannot move there.");
+            }
+
+            board.movePiece(start, end);
+
+            // Execute Promotion
+            GamePiece movedPiece = board.getPiece(end);
+            if (promoStatus == PromotionStatus.MANDATORY) {
+                movedPiece.promote();
+            } else if (promoStatus == PromotionStatus.OPTIONAL && moveRequest.promote()) {
+                movedPiece.promote();
+            } else if (promoStatus == PromotionStatus.NONE && moveRequest.promote()) {
+                throw new IllegalArgumentException("Cheating detected: Cannot promote here.");
             }
         }
-        else if (promoStatus == PromotionStatus.NONE) {
-            if (moveRequest.promote()) {
-                // The user clicked "Yes" using a hacked client, but the engine says NO!
-                throw new IllegalArgumentException("Cheating detected: This piece cannot promote here.");
-            }
-        }
-        // ----------------------------------------
-        PlayerColor enemyColor = (moveRequest.requestingPlayer() == PlayerColor.BLACK) ? PlayerColor.WHITE : PlayerColor.BLACK;
-
-        if (board.isInCheck(enemyColor)) {
-            System.out.println("🚨 CHECK! " + enemyColor + "'s King is under attack!");
-//            game.setStatus("CHECK");
-        }
-        // ----------------------------
+        // -------------------------------
 
         // 8. UPDATE STATE: Flip the turn!
         PlayerColor nextTurn = (game.getCurrentTurn() == PlayerColor.BLACK)

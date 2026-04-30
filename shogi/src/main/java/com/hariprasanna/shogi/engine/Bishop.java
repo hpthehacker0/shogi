@@ -26,6 +26,6 @@ public class Bishop extends  AbstractPiece{
     }
     @Override
     public GamePiece cloneForCaptor(PlayerColor newOwner) {
-        return new Pawn(newOwner, "Pawn");
+        return new Bishop(newOwner, "Bishop");
     }
 }

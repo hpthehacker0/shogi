@@ -27,6 +27,7 @@ public class Rook extends AbstractPiece{
     }
     @Override
     public GamePiece cloneForCaptor(PlayerColor newOwner) {
-        return new Pawn(newOwner, "Pawn");
+
+        return new Rook(newOwner, "Rook");
     }
 }

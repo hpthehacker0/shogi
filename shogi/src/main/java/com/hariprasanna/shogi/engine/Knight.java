@@ -48,7 +48,7 @@ public class Knight extends AbstractPiece{
     }
     @Override
     public GamePiece cloneForCaptor(PlayerColor newOwner) {
-        return new Pawn(newOwner, "Pawn");
+        return new Knight(newOwner, "Knight");
     }
 }
 
