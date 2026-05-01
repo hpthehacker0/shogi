@@ -163,31 +163,38 @@ public class GameService {
 
 // 5. Create our target destination
         Position end = new Position(moveRequest.endRow(), moveRequest.endColumn());
+        Position start = new Position(moveRequest.startRow(), moveRequest.startColumn());
 
-// --- 🌟 NEW: THE DROP ROUTER ---
+        // 🌟 KIFU HELPERS: Calculate coordinates once for both blocks
+        String playerIcon = (moveRequest.requestingPlayer() == PlayerColor.BLACK) ? "☗" : "☖";
+        String startColStr = String.valueOf(9 - start.column());
+        char startRowChar = (char) ('a' + start.row());
+        String endColStr = String.valueOf(9 - end.column());
+        char endRowChar = (char) ('a' + end.row());
+
+        // --- 🌟 THE DROP ROUTER ---
         if (moveRequest.isDrop()) {
 
-            // 1. Find the right hand
             List<GamePiece> hand = (moveRequest.requestingPlayer() == PlayerColor.BLACK) ? board.getBlackHand() : board.getWhiteHand();
 
-            // 2. Find the piece they want to drop
             GamePiece pieceToDrop = hand.stream()
                     .filter(p -> p.getName().equals(moveRequest.dropPieceName()))
                     .findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("Cheating Detected: You don't have that piece in your hand."));
 
-            // 3. 🌟 USE THE ENGINE'S LOGIC! 🌟
-            // The board.dropPiece() method automatically checks for Nifu, Zero-Move, and occupied squares.
             boolean successfulDrop = board.dropPiece(moveRequest.requestingPlayer(), pieceToDrop, end);
 
             if (!successfulDrop) {
-                // If the engine returns false, the drop was illegal!
                 throw new IllegalArgumentException("Illegal Drop: Violated Nifu (Double Pawn), Zero-Move rule, or square is occupied.");
             }
 
+            // 🌟 KIFU: GENERATE DROP LOG
+            String logEntry = playerIcon + " Dropped " + moveRequest.dropPieceName() + " to " + endColStr + endRowChar;
+            game.getMoveLogs().add(logEntry);
+
         } else {
 
-            Position start = new Position(moveRequest.startRow(), moveRequest.startColumn());
+
             GamePiece pieceToMove = board.getPiece(start);
 
             if (pieceToMove == null || pieceToMove.getPlayer() != moveRequest.requestingPlayer()) {
@@ -203,23 +210,35 @@ public class GameService {
 
             board.movePiece(start, end);
 
-            // Execute Promotion
             GamePiece movedPiece = board.getPiece(end);
+            boolean didPromote = false; // Keep track for the Kifu!
+
             if (promoStatus == PromotionStatus.MANDATORY) {
                 movedPiece.promote();
+                didPromote = true;
             } else if (promoStatus == PromotionStatus.OPTIONAL && moveRequest.promote()) {
                 movedPiece.promote();
+                didPromote = true;
             } else if (promoStatus == PromotionStatus.NONE && moveRequest.promote()) {
                 throw new IllegalArgumentException("Cheating detected: Cannot promote here.");
             }
+
+            // 🌟 KIFU: GENERATE NORMAL MOVE LOG
+            String pieceName = movedPiece.getName().replace("Promoted ", ""); // Clean the name
+            String logEntry = playerIcon + " " + pieceName + " "+ startColStr+startRowChar+" "+" to " + endColStr + endRowChar;
+
+            if (didPromote) {
+                logEntry += "+";
+            }
+            game.getMoveLogs().add(logEntry);
         }
-        // -------------------------------
 
         // 8. UPDATE STATE: Flip the turn!
         PlayerColor nextTurn = (game.getCurrentTurn() == PlayerColor.BLACK)
                 ? PlayerColor.WHITE
                 : PlayerColor.BLACK;
         game.setCurrentTurn(nextTurn);
+
         // 9. THE CHECKMATE DETECTOR
         if (board.isInCheck(nextTurn)) {
             // They are in check. Do they have any way out?

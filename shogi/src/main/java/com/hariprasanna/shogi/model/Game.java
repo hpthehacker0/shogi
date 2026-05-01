@@ -3,6 +3,9 @@ package com.hariprasanna.shogi.model;
 import com.hariprasanna.shogi.engine.PlayerColor;
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "games")
 public class Game {
@@ -55,6 +58,14 @@ public class Game {
     public void setBoardStateJson(String boardStateJson) {
         this.boardStateJson = boardStateJson;
     }
+
+    // Add this to your Game.java class
+    @ElementCollection
+    private List<String> moveLogs = new ArrayList<>();
+
+    // Make sure to add the Getter and Setter!
+    public List<String> getMoveLogs() { return moveLogs; }
+    public void setMoveLogs(List<String> moveLogs) { this.moveLogs = moveLogs; }
 
     // --- Constructors ---
     public Game() {
