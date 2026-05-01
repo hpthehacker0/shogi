@@ -12,7 +12,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 @RestController
 @RequestMapping("/api/games")
-@CrossOrigin("*") // Uncomment this later when you build a frontend so it doesn't block requests!
+@CrossOrigin(origins = "*")
 public class GameController {
 
     private final GameService gameService;
