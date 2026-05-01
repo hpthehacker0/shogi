@@ -1,7 +1,7 @@
 # ==========================================
 # Stage 1: Build the Application
 # ==========================================
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM eclipse-temurin:26-jdk-alpine AS builder
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -26,7 +26,7 @@ RUN ./mvnw clean package -DskipTests
 # ==========================================
 # Stage 2: Run the Application
 # ==========================================
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:26-jre-alpine
 
 WORKDIR /app
 
