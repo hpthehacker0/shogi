@@ -26,8 +26,8 @@ This backend strictly follows **Domain-Driven Design (DDD)** and a 3-tier archit
 
 | Layer | Technology |
 |---|---|
-| Language | Java 17+ |
-| Framework | Spring Boot 3+ |
+| Language | Java 26 |
+| Framework | Spring Boot 6 |
 | Database | Spring Data JPA (PostgreSQL / H2) |
 | Real-time | Spring WebSockets & STOMP Message Broker |
 | Serialization | Jackson (JSON) |
