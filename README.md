@@ -4,7 +4,8 @@ A robust, full-stack Shogi (Japanese Chess) engine built with **Java and Spring 
 ---
 <img width="1018" height="631" alt="Screenshot 2026-05-01 154617" src="https://github.com/user-attachments/assets/44b1faa7-e3b8-45be-b3cf-2046c320fe35" />
 ---
-## Deployment link : https://shogi-frontend-sigma.vercel.app/
+ Deployment link : https://shogi-frontend-sigma.vercel.app/
+ 
 ---
 ## ✨ Core Features
 
